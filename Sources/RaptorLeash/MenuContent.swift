@@ -18,7 +18,7 @@ struct MenuContent: View {
         } else {
             Text("Leash not installed")
                 .font(.caption)
-            Text("Run scripts/install.sh — or CrealityScan isn't installed.")
+            Text("Run scripts/install.sh, or CrealityScan isn't installed.")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }
