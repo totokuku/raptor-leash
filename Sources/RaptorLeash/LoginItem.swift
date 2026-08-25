@@ -1,7 +1,7 @@
 import Foundation
 
 /// Plain LaunchAgent login item -- no App Store distribution, so no need for
-/// the SMAppService ceremony. Same approach as hdmi-defrag and switchboard.
+/// the SMAppService ceremony.
 enum LoginItem {
     private static let label = "com.tomkucy.raptorleash"
 

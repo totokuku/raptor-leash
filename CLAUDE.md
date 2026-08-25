@@ -4,19 +4,6 @@ Menu-bar app that gates CrealityScan's root `RPCServer` LaunchAgent. Read
 `README.md` first; it has the full mechanism. This file is the stuff that isn't
 obvious from the code.
 
-## Origin
-
-Extracted 2026-08-24 from `~/Documents/Projects/switchboard`, which is a
-personal multi-toggle menu-bar app (HDMI flicker fix + Mess Sorter + this).
-Raptor Leash is the shareable, single-purpose version.
-
-**Switchboard still contains its own copy** of this logic
-(`Sources/Switchboard/CrealityService.swift`) and its own runbook
-(`CREALITY-UPDATE.md`). Both apps read the same template path and stage the same
-plist, so running both at once means two menu-bar toggles fighting over one
-daemon. Pick one; if Raptor Leash is the keeper, strip the Creality section out
-of Switchboard's `MenuContent.swift` and `SwitchboardApp.swift`.
-
 ## The one idea
 
 launchd auto-loads every plist in `/Library/LaunchAgents` at login and does not
@@ -27,24 +14,26 @@ Off deletes it. That is the entire design; everything else is bookkeeping.
 
 ## Do not
 
-- Add `SETENV:` to `/etc/sudoers.d/creality_rpcserver`.
+- Add `SETENV:` to `/etc/sudoers.d/creality_rpcserver`. That would let `DYLD_*`
+  through to a `NOPASSWD` root command — strictly worse than the problem being
+  solved.
 - `codesign --remove-signature` on `/Library/Creality/RPCServer`. Its Team ID must
   stay `DMR5SZUGP9`.
 
-Both were only ever needed for `~/Documents/Projects/raptor-scan/rpc-shim`, an
-**abandoned** DYLD-injection experiment from 2026-07-17 that logged IOKit traffic
-to RE the scanner protocol. It never worked and was deliberately reverted.
-`raptor-scan` is *not* the RPCServer tool — this is. If a task starts drifting
-toward shims, injection, or sudoers edits, that is the wrong track.
+Both are only ever needed to inject a library into the daemon, e.g. to trace its
+IOKit traffic and reverse-engineer the USB protocol. That was tried and abandoned:
+it doesn't work without weakening both sudo policy and the binary's code identity,
+and neither is worth it. If a task starts drifting toward shims, DYLD injection, or
+sudoers edits, that is the wrong track — parking the plist is the whole tool.
 
 ## Traps
 
 - **Every CrealityScan update wipes the template** and reinstalls the always-on
   agent. Expected, not a bug. Fix is `sudo ./scripts/install.sh`, then quit and
   reopen the app — `isAvailable` is only read on `refresh()`.
-- **`~/Documents` is TCC-protected.** `swift build` and `sudo cp` fail in here with
-  `Operation not permitted` unless the terminal has Full Disk Access. Stage through
-  `/tmp` if needed.
+- **`~/Documents` is TCC-protected.** `swift build` and `sudo cp` fail from a
+  checkout in there with `Operation not permitted` unless the terminal has Full
+  Disk Access. Stage through `/tmp` if needed.
 - **Root is genuinely required.** The Raptor returns `LIBUSB_ERROR_ACCESS`
   unprivileged even via the public Orbbec SDK (confirmed 2026-07-17). Don't go
   looking for a rootless path; the goal is only to bound *when* root runs.

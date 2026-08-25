@@ -9,20 +9,34 @@ vendor's own daemon is allowed to run.
 
 ---
 
-## The problem
+## What CrealityScan actually installs
 
-CrealityScan installs a LaunchAgent:
+Installing CrealityScan does three things that are never surfaced in the UI, never
+mentioned at install time, and that persist long after you close the app:
+
+**1. A passwordless root rule.** The installer drops a file into your sudoers
+directory:
+
+```
+/etc/sudoers.d/creality_rpcserver
+```
+
+granting `NOPASSWD` execution of `/Library/Creality/RPCServer` — a standing
+permission for one vendor binary to become root without ever asking you again.
+
+**2. A daemon that starts at every login, forever.** It also installs:
 
 ```
 /Library/LaunchAgents/com.creality.RPCServer.plist
 ```
 
-That agent re-execs `/Library/Creality/RPCServer` through `sudo`, using a
-`NOPASSWD` rule the installer drops at `/etc/sudoers.d/creality_rpcserver`. The
-result is a **root daemon holding your scanner's USB device, running at every
-login, forever** — whether or not you have ever opened CrealityScan.
+which re-execs that binary through `sudo` at every single login. Not when you open
+CrealityScan — *always*. Install the app once, never open it again, and a
+vendor-signed root process is still starting on your machine every time you log in,
+holding your scanner's USB device.
 
-The obvious fix doesn't work:
+**3. No way to turn it off that sticks.** There is no preference for this, and the
+obvious command doesn't hold:
 
 ```bash
 launchctl bootout gui/$(id -u)/com.creality.RPCServer   # off... until next login
@@ -30,7 +44,14 @@ launchctl bootout gui/$(id -u)/com.creality.RPCServer   # off... until next logi
 
 macOS bootstraps **everything** sitting in `/Library/LaunchAgents` at each login,
 with no memory of a previous session having booted it out. So the daemon silently
-comes back. There is no "disabled" state you can set that the next reboot respects.
+comes back. Delete the plist and the next CrealityScan update puts it right back —
+the `.pkg` wipes `/Library/Creality` and reinstalls the agent, no questions asked.
+
+None of this is malicious, and the root requirement itself is real (see below). But
+"permanent passwordless-root daemon, on by default, no off switch, reinstated on
+every update" is a lot of standing privilege to leave running for a device you plug
+in a few times a month. Raptor Leash bounds it to the minutes you're actually
+scanning.
 
 ### Why the daemon needs root at all
 
@@ -68,7 +89,7 @@ reappearing and warns in the menu when it does — see below.
 Requires macOS 13+, Xcode command line tools, and CrealityScan already installed.
 
 ```bash
-git clone https://github.com/<you>/raptor-leash.git
+git clone https://github.com/totokuku/raptor-leash.git
 cd raptor-leash
 ./scripts/build-app.sh
 cp -R ".build/Raptor Leash.app" /Applications/
